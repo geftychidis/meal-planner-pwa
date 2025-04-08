@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ημερολόγιο Διατροφής - Μεσογειακό Πρόγραμμα</title>
+  <!-- Σύνδεση με το manifest για το PWA -->
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body {
+      font-family: Calibri, sans-serif;
+      margin: 20px;
+      background-color: #f2f2f2;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+    .date-picker {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .date-picker input {
+      padding: 5px;
+      font-size: 16px;
+    }
+    .date-picker button {
+      padding: 5px 10px;
+      font-size: 16px;
+      margin-left: 10px;
+      cursor: pointer;
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      border-radius: 4px;
+    }
+    .nav {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .nav button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      margin: 5px;
+      cursor: pointer;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    .nav button.active {
+      background-color: #2E7D32;
+    }
+    .meal-container {
+      background-color: white;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+    .meal {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #ddd;
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 5px;
+    }
+    .meal:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+    .meal input[type="checkbox"] {
+      margin-right: 10px;
+    }
+    .meal .meal-text {
+      flex: 1;
+      margin-right: 10px;
+    }
+    /* Bold τίτλος γεύματος */
+    .meal .meal-title {
+      font-weight: bold;
+    }
+    .meal.completed .meal-text {
+      text-decoration: line-through;
+      color: #888;
+    }
+    .meal button.edit-btn {
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    /* Χρωματική διάκριση κατηγοριών γευμάτων */
+    .breakfast {
+      background-color: #AEDFF7; /* ανοιχτό μπλε */
+    }
+    .midmorning {
+      background-color: #C1F7C4; /* ανοιχτό πράσινο */
+    }
+    .lunch {
+      background-color: #FFF4A3; /* ανοιχτό κίτρινο */
+    }
+    .afternoon {
+      background-color: #FFD1DC; /* ανοιχτό ροζ */
+    }
+    .dinner {
+      background-color: #DCC1F7; /* ανοιχτό μωβ */
+    }
+    #calorieCounter {
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 15px;
+      color: #333;
+    }
+    @media (max-width: 600px) {
+      .nav button {
+        font-size: 12px;
+        padding: 6px 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Ημερολόγιο Διατροφής</h1>
+    
+    <!-- Date Picker & Κουμπί "Σήμερα" -->
+    <div class="date-picker">
+      <label for="datePicker">Επιλέξτε Ημερομηνία: </label>
+      <input type="date" id="datePicker">
+      <button id="todayBtn">Σήμερα</button>
+    </div>
+    
+    <!-- Εναλλαγή Ημερών με κουμπιά -->
+    <div class="nav">
+      <button class="day-btn" onclick="selectDayByButton('Δευτέρα')">Δευτέρα</button>
+      <button class="day-btn" onclick="selectDayByButton('Τρίτη')">Τρίτη</button>
+      <button class="day-btn" onclick="selectDayByButton('Τετάρτη')">Τετάρτη</button>
+      <button class="day-btn" onclick="selectDayByButton('Πέμπτη')">Πέμπτη</button>
+      <button class="day-btn" onclick="selectDayByButton('Παρασκευή')">Παρασκευή</button>
+      <button class="day-btn" onclick="selectDayByButton('Σάββατο')">Σάββατο</button>
+      <button class="day-btn" onclick="selectDayByButton('Κυριακή')">Κυριακή</button>
+    </div>
+    
+    <div id="dayContent" class="meal-container">
+      <!-- Τα γεύματα φορτώνονται δυναμικά εδώ -->
+    </div>
+    
+    <!-- Μετρητής θερμίδων -->
+    <div id="calorieCounter">Συνολικές θερμίδες ολοκληρωμένων γευμάτων: 0 θερμίδες</div>
+  </div>
+
+  <script>
+    // Αντικείμενο με το εβδομαδιαίο πρόγραμμα διατροφής
+    let mealPlan = {
+      "Δευτέρα": [
+        { meal: "Πρωινό (300 θερμίδες)", description: "1 φέτα ψωμί ολικής άλεσης (30g) με 1 κ.γ. ταχίνι και 1 κ.γ. μέλι, 1 πορτοκάλι, 1 ελληνικός καφές (χωρίς ζάχαρη)." },
+        { meal: "Δεκατιανό (150 θερμίδες)", description: "10 ανάλατα αμύγδαλα, 1 μικρό μήλο." },
+        { meal: "Μεσημεριανό (500 θερμίδες)", description: "Φακές (1 φλιτζάνι μαγειρεμένες) με 1 κ.σ. ελαιόλαδο, 1 φέτα ψωμί ολικής (30g), 1 πιάτο σαλάτα (ντομάτα, αγγούρι, 1 κ.σ. ελαιόλαδο, λεμόνι)." },
+        { meal: "Απογευματινό (100 θερμίδες)", description: "1 γιαούρτι 2% (150g) με 1 κ.γ. μέλι." },
+        { meal: "Βραδινό (400 θερμίδες)", description: "1 μερίδα ψητό στήθος κοτόπουλο (120g), 1 φλιτζάνι βραστά χόρτα (αμπελοφάσουλα) με 1 κ.σ. ελαιόλαδο, 1 φέτα ψωμί ολικής (30g)." }
+      ],
+      "Τρίτη": [
+        { meal: "Πρωινό (300 θερμίδες)", description: "1 αυγό βραστό, 1 φέτα ψωμί ολικής (30g), 1 μικρό ακτινίδιο, 1 ελληνικός καφές." },
+        { meal: "Δεκατιανό (150 θερμίδες)", description: "1 χούφτα καρύδια (15g), 1 μανταρίνι." },
+        { meal: "Μεσημεριανό (500 θερμίδες)", description: "1 μερίδα ψητό σολομό (120g), 1 φλιτζάνι κινόα, 1 πιάτο σαλάτα ρόκα-μαρούλι με 1 κ.σ. ελαιόλαδο και λεμόνι." },
+        { meal: "Απογευματινό (100 θερμίδες)", description: "1 μικρό μήλο." },
+        { meal: "Βραδινό (400 θερμίδες)", description: "Ομελέτα με 2 αυγά και σπανάκι, 1 φέτα ψωμί ολικής (30g), 1 πιάτο σαλάτα (ντομάτα, αγγούρι, 1 κ.σ. ελαιόλαδο)." }
+      ],
+      "Τετάρτη": [
+        { meal: "Πρωινό (300 θερμίδες)", description: "1 γιαούρτι 2% (150g) με 1 κ.σ. καρύδια και 1 κ.γ. μέλι, 1 πορτοκάλι, 1 τσάι βοτάνων." },
+        { meal: "Δεκατιανό (150 θερμίδες)", description: "1 χούφτα ανάλατα φιστίκια Αιγίνης (15g), 1 μανταρίνι." },
+        { meal: "Μεσημεριανό (500 θερμίδες)", description: "1 φλιτζάνι φασόλια γίγαντες με σάλτσα ντομάτας και 1 κ.σ. ελαιόλαδο, 1 φέτα ψωμί ολικής (30g), 1 πιάτο σαλάτα (λάχανο, καρότο, 1 κ.σ. ελαιόλαδο)." },
+        { meal: "Απογευματινό (100 θερμίδες)", description: "1 μικρό αχλάδι." },
+        { meal: "Βραδινό (400 θερμίδες)", description: "1 μερίδα ψητή τσιπούρα (120g), 1 φλιτζάνι βραστά χόρτα (βλήτα) με 1 κ.σ. ελαιόλαδο, 1 φέτα ψωμί ολικής (30g)." }
+      ],
+      "Πέμπτη": [
+        { meal: "Πρωινό (300 θερμίδες)", description: "1 φέτα ψωμί ολικής (30g) με 1 κ.γ. φυστικοβούτυρο, 1 μπανάνα (μικρή), 1 ελληνικός καφές." },
+        { meal: "Δεκατιανό (150 θερμίδες)", description: "10 αμύγδαλα, 1 μανταρίνι." },
+        { meal: "Μεσημεριανό (500 θερμίδες)", description: "1 μερίδα κοτόπουλο με λαχανικά στο φούρνο (120g κοτόπουλο, 1 φλιτζάνι λαχανικά), 1 φλιτζάνι καστανό ρύζι, 1 πιάτο σαλάτα (ντομάτα, αγγούρι, 1 κ.σ. ελαιόλαδο)." },
+        { meal: "Απογευματινό (100 θερμίδες)", description: "1 γιαούρτι 2% (150g)." },
+        { meal: "Βραδινό (400 θερμίδες)", description: "1 φλιτζάνι ρεβίθια με 1 κ.σ. ελαιόλαδο, 1 φέτα ψωμί ολικής (30g), 1 πιάτο σαλάτα (ρόκα, 1 κ.σ. ελαιόλαδο)." }
+      ],
+      "Παρασκευή": [
+        { meal: "Πρωινό (300 θερμίδες)", description: "1 αυγό βραστό, 1 φέτα ψωμί ολικής (30g), 1 πορτοκάλι, 1 τσάι βοτάνων." },
+        { meal: "Δεκατιανό (150 θερμίδες)", description: "1 χούφτα καρύδια (15g), 1 μικρό μήλο." },
+        { meal: "Μεσημεριανό (500 θερμίδες)", description: "1 μερίδα ψητή σαρδέλα (120g), 1 φλιτζάνι βραστά χόρτα (σπανάκι) με 1 κ.σ. ελαιόλαδο, 1 φέτα ψωμί ολικής (30g), 1 πιάτο σαλάτα (ντομάτα, αγγούρι, 1 κ.σ. ελαιόλαδο)." },
+        { meal: "Απογευματινό (100 θερμίδες)", description: "1 μικρό αχλάδι." },
+        { meal: "Βραδινό (400 θερμίδες)", description: "1 μερίδα γεμιστά (1 πιπεριά γεμιστή με ρύζι και λαχανικά), 1 πιάτο σαλάτα (μαρούλι, 1 κ.σ. ελαιόλαδο)." }
+      ],
+      "Σάββατο": [
+        { meal: "Πρωινό (300 θερμίδες)", description: "1 γιαούρτι 2% (150g) με 1 κ.σ. καρύδια και 1 κ.γ. μέλι, 1 μανταρίνι, 1 ελληνικός καφές." },
+        { meal: "Δεκατιανό (150 θερμίδες)", description: "10 φιστίκια Αιγίνης, 1 μικρό μήλο." },
+        { meal: "Μεσημεριανό (500 θερμίδες)", description: "1 μερίδα μπιφτέκια γαλοπούλας (120g), 1 φλιτζάνι ψητά λαχανικά (κολοκυθάκια, μελιτζάνες) με 1 κ.σ. ελαιόλαδο, 1 φέτα ψωμί ολικής (30g)." },
+        { meal: "Απογευματινό (100 θερμίδες)", description: "1 μικρό ακτινίδιο." },
+        { meal: "Βραδινό (400 θερμίδες)", description: "1 φλιτζάνι φάβα με 1 κ.σ. ελαιόλαδο, 1 πιάτο σαλάτα (ντομάτα, αγγούρι, 1 κ.σ. ελαιόλαδο), 1 φέτα ψωμί ολικής (30g)." }
+      ],
+      "Κυριακή": [
+        { meal: "Πρωινό (300 θερμίδες)", description: "1 φέτα ψωμί ολικής (30g) με 1 κ.γ. ταχίνι και 1 κ.γ. μέλι, 1 πορτοκάλι, 1 ελληνικός καφές." },
+        { meal: "Δεκατιανό (150 θερμίδες)", description: "10 αμύγδαλα, 1 μανταρίνι." },
+        { meal: "Μεσημεριανό (500 θερμίδες)", description: "1 μερίδα μοσχαρίσιο φιλέτο (100g), 1 φλιτζάνι καστανό ρύζι, 1 πιάτο σαλάτα (λάχανο, καρότο, 1 κ.σ. ελαιόλαδο)." },
+        { meal: "Απογευματινό (100 θερμίδες)", description: "1 γιαούρτι 2% (150g)." },
+        { meal: "Βραδινό (400 θερμίδες)", description: "1 μερίδα σπανακόπιτα (1 κομμάτι με σπιτικό φύλλο, 100g), 1 πιάτο σαλάτα (ρόκα, 1 κ.σ. ελαιόλαδο)." }
+      ]
+    };
+
+    // Αντιστοιχία index σε κατηγορία γεύματος για χρωματισμό
+    const mealClasses = ["breakfast", "midmorning", "lunch", "afternoon", "dinner"];
+
+    // Χάρτης getDay() σε Ελληνικά ονόματα
+    const dayNamesMap = {
+      0: "Κυριακή",
+      1: "Δευτέρα",
+      2: "Τρίτη",
+      3: "Τετάρτη",
+      4: "Πέμπτη",
+      5: "Παρασκευή",
+      6: "Σάββατο"
+    };
+
+    let currentDay = "Δευτέρα"; // αρχική ημέρα
+
+    // Ενημέρωση ενεργού κουμπιού στο nav
+    function updateActiveButton(day) {
+      document.querySelectorAll(".nav button").forEach(btn => {
+        if (btn.innerText === day) {
+          btn.classList.add("active");
+        } else {
+          btn.classList.remove("active");
+        }
+      });
+    }
+
+    // Συνάρτηση για ενημέρωση του μετρητή θερμίδων
+    function updateCalorieCounter() {
+      let totalCalories = 0;
+      const checkboxes = document.querySelectorAll("#dayContent input[type='checkbox']");
+      checkboxes.forEach((cb, index) => {
+        if (cb.checked) {
+          const mealDiv = cb.parentElement;
+          const titleElem = mealDiv.querySelector(".meal-title");
+          const match = titleElem.textContent.match(/\((\d+)\s*θερμίδες\)/);
+          if (match) {
+            totalCalories += parseInt(match[1]);
+          }
+        }
+      });
+      document.getElementById("calorieCounter").textContent = "Συνολικές θερμίδες ολοκληρωμένων γευμάτων: " + totalCalories + " θερμίδες";
+    }
+
+    // Εμφάνιση του προγράμματος για την επιλεγμένη ημέρα
+    function showDay(day) {
+      currentDay = day;
+      updateActiveButton(day);
+      const meals = mealPlan[day];
+      const dayContent = document.getElementById("dayContent");
+      dayContent.innerHTML = `<h2 style="text-align:center;">${day}</h2>`;
+      
+      meals.forEach((item, index) => {
+        const mealDiv = document.createElement("div");
+        mealDiv.className = `meal ${mealClasses[index]}`;
+        mealDiv.id = `meal-${day}-${index}`;
+
+        // Checkbox για ολοκλήρωση
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.id = `chk-${day}-${index}`;
+        checkbox.addEventListener("change", function() {
+          if (this.checked) {
+            mealDiv.classList.add("completed");
+          } else {
+            mealDiv.classList.remove("completed");
+          }
+          updateCalorieCounter();
+        });
+
+        // Κείμενο γεύματος με δυνατότητα επεξεργασίας
+        const mealText = document.createElement("div");
+        mealText.className = "meal-text";
+        mealText.innerHTML = `<span class="meal-title">${item.meal}:</span> ${item.description}`;
+        mealText.contentEditable = false;
+
+        // Κουμπί επεξεργασίας
+        const editBtn = document.createElement("button");
+        editBtn.className = "edit-btn";
+        editBtn.innerText = "Edit";
+        editBtn.addEventListener("click", function() {
+          if (mealText.contentEditable === "true" || mealText.contentEditable === true) {
+            mealText.contentEditable = false;
+            editBtn.innerText = "Edit";
+            mealPlan[currentDay][index].description = mealText.innerHTML.replace(/^<span class="meal-title">.*?:<\/span>\s*/, "");
+          } else {
+            mealText.contentEditable = true;
+            mealText.focus();
+            editBtn.innerText = "Save";
+          }
+        });
+
+        mealDiv.appendChild(checkbox);
+        mealDiv.appendChild(mealText);
+        mealDiv.appendChild(editBtn);
+        dayContent.appendChild(mealDiv);
+      });
+      updateCalorieCounter();
+    }
+
+    // Επιλογή ημέρας μέσω κουμπιών
+    function selectDayByButton(day) {
+      showDay(day);
+      document.getElementById("datePicker").value = "";
+    }
+
+    // Διαχείριση αλλαγής ημερομηνίας από το date picker
+    document.getElementById("datePicker").addEventListener("change", function() {
+      const selectedDate = new Date(this.value);
+      if (!isNaN(selectedDate)) {
+        const dayNumber = selectedDate.getDay();
+        const dayName = dayNamesMap[dayNumber];
+        showDay(dayName);
+      }
+    });
+
+    // Λειτουργία κουμπιού "Σήμερα"
+    document.getElementById("todayBtn").addEventListener("click", function() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = ("0" + (today.getMonth() + 1)).slice(-2);
+      const dd = ("0" + today.getDate()).slice(-2);
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+      document.getElementById("datePicker").value = todayStr;
+      const dayName = dayNamesMap[today.getDay()];
+      showDay(dayName);
+    });
+
+    // Εμφάνιση αρχικής ημέρας
+    window.onload = function() {
+      showDay("Δευτέρα");
+    };
+
+    // Καταχώρηση του Service Worker για PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+      .then(function(reg) {
+        console.log('Service Worker εγγεγραμμένος:', reg);
+      })
+      .catch(function(err) {
+        console.error('Service Worker αποτυχημένη εγγραφή:', err);
+      });
+    }
+  </script>
+</body>
+</html>
